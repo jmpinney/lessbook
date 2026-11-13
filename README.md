@@ -35,14 +35,12 @@ Books shown are public-domain titles from [Project Gutenberg](https://www.gutenb
 ## How it works
 
 - nginx serves the pages and lists the books folder as JSON (`autoindex_format json`). The browser draws the library from that list.
-- The reader uses [epub.ts](https://github.com/likecoin/epub.ts), the maintained TypeScript fork of epub.js, to render books in the browser.
-- Uploads use nginx's built-in WebDAV `PUT`, so no extra service is needed. nginx only accepts `.epub` files into existing folders, never overwrites, and has a size limit. The upload page checks in the browser that each file really is an EPUB before sending it.
-- Reading position and progress are saved to one small file on the server (`books/.lessbook/progress.json`, written with the same WebDAV `PUT`), so every browser picks up where you left off. Settings stay per device.
+- The reader uses [epub.ts](https://github.com/likecoin/epub.ts) to render books in the browser.
+- Reading position and progress are saved to one small file on the server (`books/.lessbook/progress.json`), so every browser picks up where you left off.
 
 ## Requirements
 
 - Docker with Docker Compose v2.
-- A folder of `.epub` files (it can start empty).
 - For anything beyond your own machine, a reverse proxy with authentication in front of lessbook. **lessbook has no login of its own**, and anyone who can reach it can read and upload books. See [Authentication](#authentication).
 
 ## Files
@@ -82,7 +80,6 @@ lessbook/
 
    ```sh
    mkdir books
-   cp ~/Downloads/*.epub books/   # optional
    ```
 
 3. Check your user and group IDs. The container runs as these, so uploaded files belong to you:
@@ -102,7 +99,6 @@ lessbook/
 
 ## The compose file
 
-### Standalone (local testing or a trusted LAN)
 
 ```yaml
 services:
@@ -119,43 +115,9 @@ services:
       - "8080:80"                              # http://<host>:8080
 ```
 
-### Behind a reverse proxy (recommended)
 
-Don't publish a port. Instead, put lessbook on the same Docker network as your reverse proxy, and let the proxy handle HTTPS and login:
 
-```yaml
-services:
-  lessbook:
-    image: nginxinc/nginx-unprivileged:1.27.4-alpine
-    container_name: lessbook
-    restart: unless-stopped
-    user: "1000:1000"
-    volumes:
-      - /path/to/your/books:/books
-      - ./www:/srv/www:ro
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-    networks: [proxy]
 
-networks:
-  proxy:
-    external: true
-    name: your_proxy_network   # the network your reverse proxy is on (`docker network ls`)
-```
-
-In the reverse proxy, forward your domain to `http://lessbook:80`. lessbook doesn't need websockets.
-
-### Settings explained
-
-| Setting | What it does | Change it when |
-|---|---|---|
-| `image` | The official unprivileged nginx image, pinned to a version. | Upgrading nginx; pin an exact tag rather than `latest`. |
-| `user` | The user and group nginx runs as. Uploaded files get this owner. | Your `id -u` / `id -g` aren't `1000`. The books folder must be writable by this user. |
-| `./books:/books` | The folder lessbook lists, reads and uploads into. | Your books live elsewhere: use an absolute path. |
-| `./www:/srv/www:ro` | The web pages, mounted read-only. | Rarely. |
-| `./nginx.conf:...:ro` | The site config. | Changing the upload limit or listen port. |
-| `ports` / `networks` | How you reach it. | Choose one of the two setups above. |
-
-**Port 80 as non-root:** nginx runs as your user but listens on port 80 inside the container. Docker 20.10 and later allow that by default. On older Docker or other container runtimes, add this to the service (or change `listen 80;` in `nginx.conf` to `8080` and map that port instead):
 
 ```yaml
     sysctls:
@@ -180,7 +142,6 @@ Whatever you use must protect **every** path, including `/books/` (the book file
 
 - Open the upload page with `u` or the **upload** button in the library.
 - Choose a destination folder, then drop files on the box or tap it to choose.
-- Each file is checked in the browser (a zip with `META-INF/container.xml` and the EPUB `mimetype`), then sent with a progress bar.
 
 What nginx enforces (see `location /upload/` in `nginx.conf`):
 
@@ -214,7 +175,6 @@ Notes:
 | `u` | Upload |
 | `t` | Change the theme |
 
-On a phone, tap a book to open it; find, sort, upload and theme are buttons in the bottom bar.
 
 ### Reader
 
@@ -228,7 +188,7 @@ On a phone, tap a book to open it; find, sort, upload and theme are buttons in t
 
 The footer shows your progress through the whole book and the page within the chapter.
 
-## Your reading data
+## Reading Progress
 
 lessbook is meant for one reader. Your position and percentage read in each book are saved to `books/.lessbook/progress.json` on the server, a couple of seconds after you turn a page and again when you leave the reader. Opening a book on another browser or device picks up from there. Folders and files starting with `.` don't appear in the library, so this file stays out of sight.
 
@@ -238,17 +198,6 @@ Each browser also keeps a copy in `localStorage`, along with its settings (theme
 - With a read-only books folder, progress can't be saved to the server, and each browser keeps its own place.
 - Everyone who can reach lessbook shares the same progress.
 
-## Updating
-
-lessbook is static files, so updating means replacing `www/` and `nginx.conf` with the new versions and running:
-
-```sh
-docker compose up -d --force-recreate
-```
-
-Recreate or restart the container after changing `nginx.conf`; `nginx -s reload` is not enough. Docker mounts that single file, and replacing it with a new copy (as `git pull` or `cp` do) leaves the container seeing the old one.
-
-To update nginx, change the `image` tag and run `docker compose up -d`.
 
 ## Troubleshooting
 
