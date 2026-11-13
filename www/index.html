@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>lessbook</title>
+  <link rel="preload" href="/vendor/fonts/vt323-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="lib">
+  <main class="term">
+    <p class="banner"><b>lessbook</b> 1.0 · less is more</p>
+    <div class="head">
+      <h1 class="cwd" data-cwd>~/books</h1>
+      <p class="total" id="total">total 0</p>
+      <p class="find" id="findRow" hidden>
+        <label for="find">find:</label>
+        <input id="find" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go">
+      </p>
+    </div>
+    <ul id="list" aria-label="Books"><li class="msg">reading directory…</li></ul>
+  </main>
+  <footer class="keys">
+    <span class="kb"><kbd>↑↓</kbd>move</span>
+    <span class="kb"><kbd>⏎</kbd>open</span>
+    <span class="kb"><kbd>⌫</kbd>up</span>
+    <span><kbd>f</kbd><button id="findBtn" type="button" aria-controls="findRow" aria-expanded="false">find</button></span>
+    <span><kbd>s</kbd><button id="sort" type="button" aria-label="Change sort order">name</button></span>
+    <span><kbd>u</kbd><a href="/upload.html" id="upload">upload</a></span>
+    <span><kbd>t</kbd><button id="theme" type="button" aria-label="Change theme">auto</button></span>
+  </footer>
+  <script src="/library.js"></script>
+</body>
+</html>

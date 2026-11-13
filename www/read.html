@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>lessbook</title>
+  <link rel="preload" href="/vendor/fonts/vt323-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="reader">
+  <header>
+    <a id="back" href="/">‹ books</a>
+    <span id="title"></span>
+    <button id="tocBtn" aria-expanded="false" aria-controls="toc">toc</button>
+    <button id="setBtn" aria-expanded="false" aria-controls="settings">aa</button>
+  </header>
+  <div id="viewer"><div id="status">loading…</div></div>
+  <footer>
+    <button id="prev" aria-label="Previous page">‹ prev</button>
+    <span id="loc"></span>
+    <button id="next" aria-label="Next page">next ›</button>
+  </footer>
+
+  <nav id="toc" class="panel" hidden aria-label="Table of contents"></nav>
+  <div id="settings" class="panel" hidden>
+    <div class="row"><span class="label">size</span>
+      <button data-size="-1" aria-label="Smaller text">a-</button>
+      <span id="sizeVal">100%</span>
+      <button data-size="1" aria-label="Larger text">A+</button></div>
+    <div class="row"><span class="label">font</span>
+      <button data-font="serif">serif</button><button data-font="sans">sans</button>
+      <button data-font="mono">mono</button><button data-font="vt323">vt323</button>
+      <button data-font="book">book's</button></div>
+    <div class="row"><span class="label">theme</span>
+      <button data-theme="auto">auto</button><button data-theme="light">light</button>
+      <button data-theme="dark">dark</button><button data-theme="sepia">sepia</button>
+      <button data-theme="dracula">dracula</button></div>
+    <div class="row"><span class="label">keys</span><span class="muted">← → / space · t toc · esc close · b back</span></div>
+  </div>
+
+  <script src="/vendor/jszip.min.js"></script>
+  <script src="/vendor/epub.min.js"></script>
+  <script src="/reader.js"></script>
+</body>
+</html>

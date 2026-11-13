@@ -1,0 +1,285 @@
+/* lessbook · Copyright © 2026 wafflemoon softworks · AGPL-3.0-only (see LICENSE) */
+/* lessbook: shared by the library and the reader. The library is a terminal-style `ls -lh` listing of ~/books;
+   the reader keeps that look in its bars and leaves the book itself readable.
+   Themes: auto (follows the device), light, dark, sepia, dracula. Set as data-theme on <html>. */
+@font-face {
+  font-family: "VT323";
+  src: url("/vendor/fonts/vt323-latin.woff2") format("woff2");
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2190-2199, U+2212, U+2215;
+}
+
+:root {
+  --bg: #fbfbf8;
+  --fg: #1c1c1a;
+  --muted: #6b6a64;
+  --line: #dddcd5;
+  --link: #1c5cab;
+  --accent-bg: #eceae2;
+  --cwd: #1c5cab;     /* path in the prompt, directories */
+  --file: #1a7f37;    /* .epub files */
+  --sel-bg: #1c1c1a;  /* inverse-video selection */
+  --sel-fg: #fbfbf8;
+  --glow: transparent;
+  --scan: transparent;
+  --term: "VT323", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="sepia"]):not([data-theme="dracula"]) {
+    --bg: #121211; --fg: #d9d7cf; --muted: #8c8a80; --line: #2b2a27; --link: #86b6ef; --accent-bg: #23221f;
+    --cwd: #86b6ef; --file: #6fd08c; --sel-bg: #d9d7cf; --sel-fg: #121211;
+    --glow: rgba(111, 208, 140, .22); --scan: rgba(0, 0, 0, .18);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121211; --fg: #d9d7cf; --muted: #8c8a80; --line: #2b2a27; --link: #86b6ef; --accent-bg: #23221f;
+  --cwd: #86b6ef; --file: #6fd08c; --sel-bg: #d9d7cf; --sel-fg: #121211;
+  --glow: rgba(111, 208, 140, .22); --scan: rgba(0, 0, 0, .18);
+  color-scheme: dark;
+}
+:root[data-theme="sepia"] {
+  --bg: #f4ecd8; --fg: #3b3024; --muted: #7a6a55; --line: #ddd0b3; --link: #8a4b14; --accent-bg: #ebe0c6;
+  --cwd: #8a4b14; --file: #5d6b1e; --sel-bg: #3b3024; --sel-fg: #f4ecd8;
+}
+/* Dracula (draculatheme.com): background #282a36, current line #44475a, foreground #f8f8f2, comment #6272a4,
+   cyan #8be9fd, green #50fa7b, pink #ff79c6, purple #bd93f9 */
+:root[data-theme="dracula"] {
+  --bg: #282a36; --fg: #f8f8f2; --muted: #6272a4; --line: #44475a; --link: #8be9fd; --accent-bg: #44475a;
+  --cwd: #bd93f9; --file: #8be9fd; --sel-bg: #44475a; --sel-fg: #f8f8f2;
+  --glow: rgba(189, 147, 249, .25); --scan: rgba(0, 0, 0, .14);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 var(--mono);
+  -webkit-text-size-adjust: 100%;
+}
+a { color: var(--link); text-decoration: none; }
+a:hover, a:focus-visible { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+button {
+  font: inherit;
+  color: var(--link);
+  background: none;
+  border: 0;
+  padding: 6px 8px;
+  cursor: pointer;
+  min-height: 36px;
+}
+button:hover, button:focus-visible { text-decoration: underline; }
+button[aria-pressed="true"] { color: var(--sel-fg); background: var(--sel-bg); }
+.muted { color: var(--muted); }
+
+/* ---- library: a terminal session ---- */
+.lib {
+  font: 21px/1.25 var(--term);
+  text-shadow: 0 0 6px var(--glow);
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+/* faint CRT scanlines in the dark themes */
+.lib::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, transparent 0 2px, var(--scan) 2px 3px);
+  z-index: 5;
+}
+.lib .term {
+  flex: 1;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding-block: 18px 24px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.lib p { margin: 0; }
+.lib .banner { color: var(--muted); margin-bottom: 14px; }
+.lib .banner b { color: var(--fg); font-weight: normal; }
+.lib h1.cwd { color: var(--cwd); font: inherit; margin: 0; }
+.lib .total { color: var(--fg); }
+/* folder, total and find stay pinned while the list scrolls */
+.lib .head {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--bg);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+.lib .find { display: flex; align-items: baseline; gap: 1ch; }
+.lib .find[hidden] { display: none; }
+.lib .find label { color: var(--muted); }
+.lib .find input {
+  flex: 1;
+  min-width: 0;
+  max-width: 40ch;
+  font: inherit;
+  color: var(--fg);
+  caret-color: var(--fg);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 0 2px;
+  border-radius: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.lib .find input:focus { outline: none; border-bottom-color: var(--cwd); }
+.lib .find input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.lib ul { list-style: none; margin: 0; padding: 0; }
+.lib li {
+  display: grid;
+  grid-template-columns: 11ch 7ch 5ch 13ch minmax(0, 1fr) 6ch;
+  column-gap: 1ch;
+  padding: 1px 4px;
+  margin: 0 -4px;
+  align-items: baseline;
+}
+.lib li > span { white-space: pre; }
+.lib li .perm, .lib li .owner, .lib li .date { color: var(--muted); }
+.lib li .size { text-align: right; }
+.lib li .name { min-width: 0; overflow-wrap: anywhere; white-space: normal; }
+.lib li .name a { color: var(--file); }
+.lib li.dir .name a { color: var(--cwd); }  /* VT323 has no bold; faux bold smears */
+.lib li .read { color: var(--muted); text-align: right; }
+.lib li.sel, .lib li:hover { background: var(--sel-bg); text-shadow: none; }
+.lib li.sel > *, .lib li.sel a, .lib li:hover > *, .lib li:hover a { color: var(--sel-fg) !important; }
+.lib li.msg { display: block; color: var(--muted); }
+/* DOS-style key bar */
+.lib .keys {
+  position: sticky;
+  bottom: 0;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding-block: 6px calc(6px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  text-shadow: none;
+  justify-content: center;
+}
+.lib .keys kbd {
+  font: inherit;
+  font-size: 1.2em;   /* the key letters stand out a little from the words */
+  line-height: 1;
+  color: var(--sel-fg);
+  background: var(--sel-bg);
+  padding: 1px 5px;
+  margin-right: 5px;
+}
+.lib .keys button { padding: 0 2px; min-height: 0; color: var(--link); }
+/* touch screens have no keyboard: hide the arrow/enter/backspace hints and keep the bar on one line */
+@media (hover: none) and (pointer: coarse) { .lib .keys .kb { display: none; } }
+@media (max-width: 640px) {
+  .lib .keys { flex-wrap: nowrap; justify-content: center; gap: 0 12px; font-size: 19px; white-space: nowrap; }
+  .lib .keys kbd { padding: 0 4px; margin-right: 4px; }
+  .upload .keys { flex-wrap: wrap; white-space: normal; }
+}
+/* narrow screens: drop permissions, owner and date, keep size / name / % read */
+@media (max-width: 640px) {
+  .lib { font-size: 20px; }
+  .lib li { grid-template-columns: 6ch minmax(0, 1fr) 5ch; }
+  .lib li .perm, .lib li .owner, .lib li .date { display: none; }
+}
+
+/* ---- upload page ---- */
+.upload .field { display: flex; align-items: baseline; gap: 1ch; margin-bottom: 12px; }
+.upload .field label { color: var(--muted); }
+.upload select {
+  font: inherit;
+  color: var(--cwd);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 2px 6px;
+  max-width: 100%;
+  min-width: 0;
+}
+.upload .drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 32px 16px;
+  border: 2px dashed var(--line);
+  cursor: pointer;
+  text-align: center;
+  margin-bottom: 16px;
+}
+.upload .drop:hover, .upload .drop.over, .upload .drop:focus-within { border-color: var(--cwd); }
+.upload .drop.over { background: var(--accent-bg); }
+.upload .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.upload .drop-text { color: var(--file); }
+.upload .drop-hint { color: var(--muted); font-size: .85em; }
+.upload .logline { display: grid; grid-template-columns: 7ch minmax(0, 1fr); column-gap: 1ch; }
+.upload .logline .status { color: var(--muted); }
+/* wrap between words; only a word longer than the line is broken */
+.upload .term, .upload .keys { overflow-wrap: break-word; }
+.upload .logline .text { overflow-wrap: break-word; white-space: normal; min-width: 0; }
+.upload .logline .bar { white-space: nowrap; }
+.upload .field { flex-wrap: wrap; }
+.upload .drop-text, .upload .drop-hint { max-width: 100%; text-wrap: balance; }
+.upload .logline.ok .status { color: var(--file); }
+.upload .logline.err .status, .upload .logline.err .text { color: #d1495b; }
+:root[data-theme="dracula"] .upload .logline.err .status, :root[data-theme="dracula"] .upload .logline.err .text { color: #ff5555; }
+
+/* ---- reader ---- */
+.reader { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+.reader header, .reader footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border-color: var(--line);
+  border-style: solid;
+  border-width: 0;
+  white-space: nowrap;
+  font: 19px/1.2 var(--term);
+}
+.reader header { border-bottom-width: 1px; }
+.reader footer { border-top-width: 1px; justify-content: space-between; }
+.reader #title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 0 8px; color: var(--muted); }
+/* One column, capped at a comfortable line length on wide screens */
+.reader #viewer { flex: 1; min-height: 0; position: relative; width: 100%; max-width: 46em; margin: 0 auto; }
+.reader #status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); padding: 16px; text-align: center; font: 20px var(--term); }
+.reader #loc { color: var(--muted); }
+.panel {
+  position: fixed;
+  top: 44px;
+  right: 8px;
+  left: 8px;
+  max-width: 500px;
+  margin-left: auto;
+  max-height: calc(100dvh - 100px);
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 8px 12px;
+  z-index: 10;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, .25);
+  font: 19px/1.3 var(--term);
+}
+.panel[hidden] { display: none; }
+.panel ul { list-style: none; margin: 0; padding: 0; }
+.panel ul ul { padding-left: 2ch; }
+.panel li a { display: block; padding: 5px 0; }
+.panel li a.current { color: var(--sel-fg); background: var(--sel-bg); padding-left: 4px; }
+.panel .row { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; padding: 4px 0; }
+.panel .row .label { width: 7ch; color: var(--muted); }
+.panel button { padding: 2px 6px; min-height: 32px; }
