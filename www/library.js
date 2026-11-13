@@ -81,7 +81,20 @@
     return `${mon} ${day} ${tail}`;
   }
 
+  // Progress synced by the reader to /progress.json; used when newer than this browser's own copy
+  let progress = {};
+  async function loadProgress() {
+    try {
+      const r = await fetch("/progress.json", { cache: "no-store" });
+      progress = r.ok ? (await r.json()) || {} : {};
+    } catch (e) { progress = {}; }
+  }
+
   function readFraction(path) {
+    const s = progress[path];
+    let localT = 0;
+    try { localT = JSON.parse(store.get("reader.pos:" + path, "{}")).t || 0; } catch (e) { /* old format */ }
+    if (s && s.pct != null && (s.t || 0) >= localT) return Number(s.pct);
     const v = store.get("reader.pct:" + path, null);
     return v == null ? null : Number(v);
   }
@@ -131,7 +144,10 @@
     loaded = false;
     sel = 0;
     try {
-      const res = await fetch("/books" + encodePath(dir), { headers: { Accept: "application/json" } });
+      const [res] = await Promise.all([
+        fetch("/books" + encodePath(dir), { headers: { Accept: "application/json" } }),
+        loadProgress(),
+      ]);
       if (!res.ok) throw new Error(res.status === 404 ? "No such file or directory" : res.status + " " + res.statusText);
       const entries = await res.json();
       dirs = entries.filter((e) => e.type === "directory" && !e.name.startsWith("."));

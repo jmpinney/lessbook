@@ -12,7 +12,7 @@ lessbook is a few static files served by nginx. It has no database, no build ste
 - **Upload** (`u`): add EPUBs from the browser, including from a phone.
 - **Reader**: paginated, one column at a comfortable line length. Turn pages by tapping the edges, swiping, or using the arrow keys or space. It has a table of contents, text size and fonts (serif, sans, mono, VT323 or the book's own).
 - **Themes**: auto (follows the device), light, dark, sepia and Dracula.
-- **Remembers your place** in each book, to the exact page, on each device.
+- **Remembers your place** in each book, to the exact page, across all your browsers and devices.
 - **Self-contained**: nothing loads from a CDN, and no fonts or scripts come from third parties.
 
 ## How it works
@@ -20,7 +20,7 @@ lessbook is a few static files served by nginx. It has no database, no build ste
 - nginx serves the pages and lists the books folder as JSON (`autoindex_format json`). The browser draws the library from that list.
 - The reader uses [epub.js](https://github.com/futurepress/epub.js) to render books in the browser.
 - Uploads use nginx's built-in WebDAV `PUT`, so no extra service is needed. nginx only accepts `.epub` files into existing folders, never overwrites, and has a size limit. The upload page checks in the browser that each file really is an EPUB before sending it.
-- Reading position, progress and settings are stored in the browser's `localStorage`. They are per device and are not synced.
+- Reading position and progress are saved to one small file on the server (`books/.lessbook/progress.json`, written with the same WebDAV `PUT`), so every browser picks up where you left off. Settings stay per device.
 
 ## Requirements
 
@@ -145,7 +145,7 @@ In the reverse proxy, forward your domain to `http://lessbook:80`. lessbook does
       net.ipv4.ip_unprivileged_port_start: 0
 ```
 
-**Read-only library:** if you don't want uploads, mount the books folder with `:ro` and delete the `location /upload/ { ... }` block from `nginx.conf`. Reading works as normal; an upload attempt is refused (the upload page reports "folder not found").
+**Read-only library:** if you don't want uploads, mount the books folder with `:ro` and delete the `location /upload/ { ... }` block from `nginx.conf`. Reading works as normal; an upload attempt is refused (the upload page reports "folder not found"). Reading progress then stays in each browser instead of syncing.
 
 ## Authentication
 
@@ -213,11 +213,13 @@ The footer shows your progress through the whole book and the page within the ch
 
 ## Your reading data
 
-Position, percentage read, settings and cached page locations are stored in each browser's `localStorage` under keys starting with `reader.` and `lessbook.`. Nothing is stored on the server, so:
+lessbook is meant for one reader. Your position and percentage read in each book are saved to `books/.lessbook/progress.json` on the server, a couple of seconds after you turn a page and again when you leave the reader. Opening a book on another browser or device picks up from there. Folders and files starting with `.` don't appear in the library, so this file stays out of sight.
 
-- each device and browser keeps its own place;
-- clearing site data in the browser resets it;
-- private or incognito windows don't keep it.
+Each browser also keeps a copy in `localStorage`, along with its settings (theme, font, text size, sort) and cached page locations. When the two copies differ, the newer one wins.
+
+- To reset your progress everywhere, delete `books/.lessbook/progress.json`.
+- With a read-only books folder, progress can't be saved to the server, and each browser keeps its own place.
+- Everyone who can reach lessbook shares the same progress.
 
 ## Updating
 

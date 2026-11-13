@@ -1,7 +1,8 @@
 // lessbook · Copyright © 2026 wafflemoon softworks · AGPL-3.0-only (see LICENSE)
 // lessbook reader: epub.js (vendor/epub.min.js) in paginated mode. Book path comes from the hash: read.html#/dir/file.epub.
-// Per-device state in localStorage: reader.pos:<path> (CFI), reader.pct:<path> (0-1, shown in the library),
+// State in localStorage: reader.pos:<path> (CFI), reader.pct:<path> (0-1, shown in the library),
 // reader.locs:<path> (cached page locations), reader.size / reader.font / reader.theme.
+// Position and percentage are also synced to /progress.json so they follow you across browsers.
 (function () {
   "use strict";
   const $ = (id) => document.getElementById(id);
@@ -143,13 +144,67 @@
   });
 
   // ---- position + progress ----
+  // Kept in localStorage and, so every browser picks up where you left off, in /progress.json on the server
+  // ({"<path>": {cfi, href, page, total, pct, t}}). When a book opens, whichever copy is newer wins.
   const POS = "reader.pos:" + path, PCT = "reader.pct:" + path, LOCS = "reader.locs:" + path;
 
+  let remote = null;   // last copy of progress.json read from the server
+  let pending = null;  // newest position not yet sent
+  let timer = 0;
+  let locsReady = false; // percentages are only right once the book's page locations are complete
+  let lastCfi = null;
+
+  // {} when there is no file yet; null when the server can't be read (then never write, or we'd wipe other books)
+  async function fetchProgress() {
+    try {
+      const r = await fetch("/progress.json", { cache: "no-store" });
+      if (r.status === 404) return {};
+      if (!r.ok) return null;
+      const j = await r.json();
+      return j && typeof j === "object" ? j : null;
+    } catch (e) { return null; }
+  }
+
+  function putProgress(doc, keepalive) {
+    return fetch("/progress.json", {
+      method: "PUT", keepalive, headers: { "Content-Type": "application/json" }, body: JSON.stringify(doc),
+    }).catch(() => { /* offline: localStorage still has it, next save retries */ });
+  }
+
+  function saveRemote(entry) {
+    pending = entry;
+    clearTimeout(timer);
+    timer = setTimeout(pushRemote, 2000);
+  }
+
+  async function pushRemote() {
+    if (!pending) return;
+    const entry = pending;
+    pending = null;
+    const doc = await fetchProgress();
+    if (!doc) { pending = pending || entry; return; }
+    remote = doc;
+    if (doc[path] && (doc[path].t || 0) > entry.t) return; // read further along on another device since
+    doc[path] = entry;
+    await putProgress(doc);
+  }
+
+  // Leaving the page: send the last position at once, without waiting to re-read the file
+  function flush() {
+    if (!pending || !remote) return;
+    clearTimeout(timer);
+    remote[path] = pending;
+    pending = null;
+    putProgress(remote, true);
+  }
+  addEventListener("pagehide", flush);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) flush(); });
+
   function showLocation(loc) {
-    if (!loc || !loc.start) return;
+    if (!loc || !loc.start) return null;
     const parts = [];
     let pct = null;
-    if (book.locations.length()) pct = book.locations.percentageFromCfi(loc.start.cfi);
+    if (locsReady) pct = book.locations.percentageFromCfi(loc.start.cfi);
     if (loc.atEnd) pct = 1;
     if (pct != null) {
       parts.push(Math.round(pct * 100) + "%");
@@ -159,6 +214,7 @@
     if (d && d.total) parts.push(d.page + "/" + d.total);
     $("loc").textContent = parts.join("  ·  ");
     markCurrentToc(loc.start.href);
+    return pct;
   }
 
   // Saved as {cfi, href, page, total}. The CFI marks where the first visible text starts; when that text began on
@@ -166,11 +222,16 @@
   // (only when the chapter still has the same page count, i.e. same screen size).
   let restoring = false;
   rendition.on("relocated", (loc) => {
-    if (!restoring) {
+    const pct = showLocation(loc);
+    // epub.js also reports the same spot again after layout changes; only a real move is saved
+    if (!restoring && loc.start.cfi !== lastCfi) {
+      lastCfi = loc.start.cfi;
       const d = loc.start.displayed || {};
-      store.set(POS, JSON.stringify({ cfi: loc.start.cfi, href: loc.start.href, page: d.page, total: d.total }));
+      const pos = { cfi: loc.start.cfi, href: loc.start.href, page: d.page, total: d.total, t: Date.now() };
+      store.set(POS, JSON.stringify(pos));
+      const known = store.get(PCT, null);
+      saveRemote({ ...pos, pct: pct != null ? pct : known != null ? Number(known) : null });
     }
-    showLocation(loc);
   });
 
   function savedPos() {
@@ -180,7 +241,15 @@
   }
 
   async function restore() {
-    const saved = savedPos();
+    remote = await fetchProgress();
+    const local = savedPos();
+    const server = remote && remote[path];
+    let saved = local;
+    if (server && server.cfi && (!local || (server.t || 0) > (local.t || 0))) {
+      saved = server;
+      store.set(POS, JSON.stringify(server));
+      if (server.pct != null) store.set(PCT, String(server.pct));
+    }
     if (!saved || !saved.cfi) return rendition.display();
     restoring = true;
     try {
@@ -195,6 +264,7 @@
       restoring = false;
     }
     const cur = rendition.currentLocation();
+    if (cur && cur.start) lastCfi = cur.start.cfi;
     if (cur && cur.start) showLocation(cur);
   }
 
@@ -234,7 +304,9 @@
       await book.locations.generate(1600);
       store.set(LOCS, book.locations.save());
     }
-    showLocation(rendition.currentLocation());
+    locsReady = true;
+    const pct = showLocation(rendition.currentLocation());
+    if (pending && pct != null) pending.pct = pct;
   }).catch(() => { /* percentage is optional */ });
 
   // ---- table of contents ----
