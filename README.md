@@ -32,7 +32,7 @@ lessbook is a few static files served by nginx. It has no database, no build ste
 
 Books shown are public-domain titles from [Project Gutenberg](https://www.gutenberg.org/).
 
-## How it works
+## How It Works
 
 - nginx serves the pages and lists the books folder as JSON (`autoindex_format json`). The browser draws the library from that list.
 - The reader uses [epub.ts](https://github.com/likecoin/epub.ts) to render books in the browser.
@@ -67,7 +67,7 @@ lessbook/
             └── VT323-OFL.txt
 ```
 
-## Quick start
+## Quick Start
 
 1. Get the files:
 
@@ -89,7 +89,7 @@ lessbook/
    id -g   # e.g. 1000
    ```
 
-4. Edit `docker-compose.yml` (see [The compose file](#the-compose-file)), then start it:
+4. Edit `docker-compose.yml` (see [The Compose File](#the-compose-file)), then start it:
 
    ```sh
    docker compose up -d
@@ -97,8 +97,7 @@ lessbook/
 
 5. Open `http://localhost:8080` (or whichever port you published).
 
-## The compose file
-
+## The Compose File
 
 ```yaml
 services:
@@ -113,15 +112,6 @@ services:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "8080:80"                              # http://<host>:8080
-```
-
-
-
-
-
-```yaml
-    sysctls:
-      net.ipv4.ip_unprivileged_port_start: 0
 ```
 
 **Read-only library:** if you don't want uploads, mount the books folder with `:ro` and delete the `location /upload/ { ... }` block from `nginx.conf`. Reading works as normal; an upload attempt is refused (the upload page reports "folder not found"). Reading progress then stays in each browser instead of syncing.
@@ -161,7 +151,7 @@ Notes:
 - **Changing the size limit:** edit `client_max_body_size` in `nginx.conf` **and** `MAX` at the top of `www/upload.js`, then run `docker compose restart`. Raise your reverse proxy's limit to match.
 - Uploads are written to `books/.lessbook-tmp` first and then moved into place, so a half-finished upload never shows up in the library.
 
-## Using it
+## Using It
 
 ### Library
 
@@ -174,7 +164,6 @@ Notes:
 | `s` | Change the sort: name, new, read, size |
 | `u` | Upload |
 | `t` | Change the theme |
-
 
 ### Reader
 
@@ -195,9 +184,7 @@ lessbook is meant for one reader. Your position and percentage read in each book
 Each browser also keeps a copy in `localStorage`, along with its settings (theme, font, text size, sort) and cached page locations. When the two copies differ, the newer one wins.
 
 - To reset your progress everywhere, delete `books/.lessbook/progress.json`.
-- With a read-only books folder, progress can't be saved to the server, and each browser keeps its own place.
 - Everyone who can reach lessbook shares the same progress.
-
 
 ## Troubleshooting
 
@@ -210,7 +197,7 @@ Copyright © 2026 wafflemoon softworks
 
 lessbook is free software: you can redistribute it and/or modify it under the terms of the [GNU Affero General Public License v3.0](LICENSE). If you run a modified version where others can use it over a network, you must offer them its source code. The bundled third-party files below keep their own licences.
 
-## Third-party software
+## Third-Party Software
 
 Bundled in `www/vendor/`, each with its licence alongside:
 
