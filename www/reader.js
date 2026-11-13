@@ -1,5 +1,5 @@
 // lessbook · Copyright © 2026 wafflemoon softworks · AGPL-3.0-only (see LICENSE)
-// lessbook reader: epub.js (vendor/epub.min.js) in paginated mode. Book path comes from the hash: read.html#/dir/file.epub.
+// lessbook reader: epub.ts (vendor/epub-ts.umd.js, the maintained TypeScript fork of epub.js) in paginated mode. Book path comes from the hash: read.html#/dir/file.epub.
 // State in localStorage: reader.pos:<path> (CFI), reader.pct:<path> (0-1, shown in the library),
 // reader.locs:<path> (cached page locations), reader.size / reader.font / reader.theme.
 // Position and percentage are also synced to /progress.json so they follow you across browsers.

@@ -1,3 +1,4 @@
+Copyright (c) 2024-2026, 3ook.com
 Copyright (c) 2013, FuturePress
 
 All rights reserved.

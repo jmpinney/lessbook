@@ -18,7 +18,7 @@ lessbook is a few static files served by nginx. It has no database, no build ste
 ## How it works
 
 - nginx serves the pages and lists the books folder as JSON (`autoindex_format json`). The browser draws the library from that list.
-- The reader uses [epub.js](https://github.com/futurepress/epub.js) to render books in the browser.
+- The reader uses [epub.ts](https://github.com/likecoin/epub.ts), the maintained TypeScript fork of epub.js, to render books in the browser.
 - Uploads use nginx's built-in WebDAV `PUT`, so no extra service is needed. nginx only accepts `.epub` files into existing folders, never overwrites, and has a size limit. The upload page checks in the browser that each file really is an EPUB before sending it.
 - Reading position and progress are saved to one small file on the server (`books/.lessbook/progress.json`, written with the same WebDAV `PUT`), so every browser picks up where you left off. Settings stay per device.
 
@@ -44,9 +44,9 @@ lessbook/
     ├── upload.js
     ├── style.css           shared styles and themes
     └── vendor/
-        ├── epub.min.js     epub.js 0.3.93
+        ├── epub-ts.umd.js  epub.ts 0.7.3
         ├── jszip.min.js    JSZip 3.10.1
-        ├── epubjs-LICENSE.txt, jszip-LICENSE.txt
+        ├── epub-ts-LICENSE.txt, jszip-LICENSE.txt
         └── fonts/
             ├── vt323-latin.woff2
             └── VT323-OFL.txt
@@ -229,6 +229,8 @@ lessbook is static files, so updating means replacing `www/` and `nginx.conf` wi
 docker compose up -d --force-recreate
 ```
 
+Recreate or restart the container after changing `nginx.conf`; `nginx -s reload` is not enough. Docker mounts that single file, and replacing it with a new copy (as `git pull` or `cp` do) leaves the container seeing the old one.
+
 To update nginx, change the `image` tag and run `docker compose up -d`.
 
 ## Troubleshooting
@@ -246,7 +248,7 @@ lessbook is free software: you can redistribute it and/or modify it under the te
 
 Bundled in `www/vendor/`, each with its licence alongside:
 
-- [epub.js](https://github.com/futurepress/epub.js) 0.3.93, BSD-2-Clause, © FuturePress
+- [epub.ts](https://github.com/likecoin/epub.ts) 0.7.3 (fork of [epub.js](https://github.com/futurepress/epub.js)), BSD-2-Clause, © 3ook.com and FuturePress
 - [JSZip](https://github.com/Stuk/jszip) 3.10.1, MIT or GPLv3 (dual licensed)
 - [VT323](https://fonts.google.com/specimen/VT323) font, SIL Open Font License 1.1, © The VT323 Project Authors
 
