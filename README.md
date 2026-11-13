@@ -4,6 +4,8 @@ A tiny self-hosted EPUB reader for the browser. Put `.epub` files in a folder, o
 
 lessbook is a few static files served by nginx. It has no database, no build step and no app server. The library is the folder itself: add or remove books and the list updates.
 
+![The library in the Dracula theme: an ls -l style listing of EPUB files with reading progress](docs/screenshots/library.png)
+
 ## Features
 
 - **Library**: a terminal-style `ls -l` listing of your books folder. It shows size, date and how far you've read, and subfolders work.
@@ -14,6 +16,21 @@ lessbook is a few static files served by nginx. It has no database, no build ste
 - **Themes**: auto (follows the device), light, dark, sepia and Dracula.
 - **Remembers your place** in each book, to the exact page, across all your browsers and devices.
 - **Self-contained**: nothing loads from a CDN, and no fonts or scripts come from third parties.
+
+## Screenshots
+
+| Reader with the contents list (Dracula, VT323) | Reader settings (sepia) |
+|---|---|
+| ![Table of contents open over a page of The Time Machine](docs/screenshots/toc.png) | ![Text size, font and theme settings over a page of Frankenstein](docs/screenshots/settings.png) |
+
+<p>
+  <img src="docs/screenshots/library-phone.png" width="260" alt="The library on a phone, light theme">
+  <img src="docs/screenshots/reader-phone.png" width="260" alt="Reading Alice's Adventures in Wonderland on a phone, dark theme">
+</p>
+
+![The upload page: choose a folder, then drop EPUB files](docs/screenshots/upload.png)
+
+Books shown are public-domain titles from [Project Gutenberg](https://www.gutenberg.org/).
 
 ## How it works
 
