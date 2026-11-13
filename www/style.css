@@ -184,8 +184,6 @@ button[aria-pressed="true"] { color: var(--sel-fg); background: var(--sel-bg); }
   margin-right: 5px;
 }
 .lib .keys button { padding: 0 2px; min-height: 0; color: var(--link); }
-/* touch screens have no keyboard: hide the arrow/enter/backspace hints and keep the bar on one line */
-@media (hover: none) and (pointer: coarse) { .lib .keys .kb { display: none; } }
 @media (max-width: 640px) {
   .lib .keys { flex-wrap: nowrap; justify-content: center; gap: 0 12px; font-size: 19px; white-space: nowrap; }
   .lib .keys kbd { padding: 0 4px; margin-right: 4px; }
