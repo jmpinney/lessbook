@@ -102,7 +102,7 @@ lessbook/
 ```yaml
 services:
   lessbook:
-    image: nginxinc/nginx-unprivileged:1.27.4-alpine
+    image: nginxinc/nginx-unprivileged:1.30.6-alpine
     container_name: lessbook
     restart: unless-stopped
     user: "1000:1000"                          # your `id -u`:`id -g`
